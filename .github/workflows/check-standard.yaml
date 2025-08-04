@@ -1,0 +1,120 @@
+on:
+  push:
+
+name: R-CMD-check
+
+jobs:
+  # This is is only job in the file that fails
+  failure:
+    runs-on: windows-latest
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+      - run: |
+          install.packages("pkgdepends")
+          print(packageVersion("pkgdepends"))
+
+          proposal <- pkgdepends::new_pkg_installation_proposal(
+            c("any::rcmdcheck", "mrc-ide/malariasimulation"),
+            config = list(library = tempfile(), dependencies = NA)
+          )
+          proposal$solve()
+          proposal$stop_for_solution_error()
+
+        shell: Rscript {0}
+
+  # If we omit `use-public-rspm: true` when installing R, the problem goes away
+  no-rspm:
+    runs-on: windows-latest
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - uses: r-lib/actions/setup-r@v2
+      - run: |
+          install.packages("pkgdepends")
+          print(packageVersion("pkgdepends"))
+
+          proposal <- pkgdepends::new_pkg_installation_proposal(
+            c("any::rcmdcheck", "mrc-ide/malariasimulation"),
+            config = list(library = tempfile(), dependencies = NA)
+          )
+          proposal$solve()
+          proposal$stop_for_solution_error()
+
+        shell: Rscript {0}
+
+  # Removing rcmdcheck from the list of dependencies makes the problem go away
+  fewer-dependencies:
+    runs-on: windows-latest
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+      - run: |
+          install.packages("pkgdepends")
+          print(packageVersion("pkgdepends"))
+
+          proposal <- pkgdepends::new_pkg_installation_proposal(
+            "mrc-ide/malariasimulation",
+            config = list(library = tempfile(), dependencies = NA)
+          )
+          proposal$solve()
+          proposal$stop_for_solution_error()
+
+        shell: Rscript {0}
+
+  # malariaEquilibriumVivax is already a dependency of malariasimulation, but adding it makes the problem go away.
+  more-dependencies:
+    runs-on: windows-latest
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+      - run: |
+          install.packages("pkgdepends")
+          print(packageVersion("pkgdepends"))
+
+          proposal <- pkgdepends::new_pkg_installation_proposal(
+            c("any::rcmdcheck", "mrc-ide/malariaEquilibriumVivax", "mrc-ide/malariasimulation"),
+            config = list(library = tempfile(), dependencies = NA)
+          )
+          proposal$solve()
+          proposal$stop_for_solution_error()
+
+        shell: Rscript {0}
+
+  # Just resolving an unrelated package first makes the issue disappear
+  prepopulate-cache:
+    runs-on: windows-latest
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+      - run: |
+          install.packages("pkgdepends")
+          print(packageVersion("pkgdepends"))
+
+          pkgdepends::new_pkg_deps("mrc-ide/orderly2")$resolve()
+
+          proposal <- pkgdepends::new_pkg_installation_proposal(
+            c("any::rcmdcheck", "mrc-ide/malariasimulation"),
+            config = list(library = tempfile(), dependencies = NA)
+          )
+          proposal$solve()
+          proposal$stop_for_solution_error()
+
+        shell: Rscript {0}
